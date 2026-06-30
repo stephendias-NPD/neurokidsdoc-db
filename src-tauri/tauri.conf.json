@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tauri-app",
+  "productName": "NeuroKidsDoc Patient Database",
   "version": "0.1.0",
-  "identifier": "com.diass.tauri-app",
+  "identifier": "com.neurokidsdoc.db",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,9 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
-        "width": 800,
-        "height": 600
+        "title": "NeuroKidsDoc Patient Database",
+        "width": 1100,
+        "height": 720
       }
     ],
     "security": {
