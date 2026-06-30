@@ -31,6 +31,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
 
   return (
     <div className="login-screen">
+      <div className="login-bg-logo" />
       <div className="login-card">
         <h1 className="login-logo">NeuroKidsDoc DB</h1>
         <h2 className="login-title">Database Authentication</h2>
