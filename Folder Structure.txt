@@ -1,0 +1,39 @@
+patient_db_app/
+│
+├── main.py                      # Entry point of the app
+├── config.py                    # Google Sheet ID, user credentials, etc.
+├── auth/
+│   ├── login.py                 # Login logic
+│   └── users.json               # Encrypted user credentials (you can manage manually)
+│
+├── gui/
+│   ├── layout.py                # Tkinter/CustomTkinter GUI layout
+│   └── handlers.py              # Button functions (add, update, delete, search)
+│
+├── sheets/
+│   ├── sheet_service.py         # Google Sheets API connection setup
+│   └── sheet_ops.py             # Read/write/search functions
+│
+├── utils/
+│   ├── validator.py             # Input checks, error handlers
+│   └── encryptor.py             # (Optional) For encrypting/decrypting password
+│
+├── credentials/
+│   └── credentials.json         # Google Service Account credentials file
+│
+├── assets/
+│   └── icon.png                 # Optional app icon
+│
+├── logs/
+│   └── app.log                  # Error and activity logs
+│
+└── README.md                    # Project instructions
+
+
+
+Command to convert into EXE:
+pyinstaller --noconfirm --onefile --windowed --icon=assets/icon.png main.py
+
+after copying the main.spec (modified one with correct imports), run the following
+
+pyinstaller main.spec
