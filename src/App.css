@@ -88,21 +88,6 @@ body {
   align-items: center;
   height: 100vh;
   background: radial-gradient(circle at center, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-.login-bg-logo {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  background-image: url('/logo.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 0.05;
-  z-index: 1;
-  pointer-events: none;
 }
 
 .login-card {
