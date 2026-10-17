@@ -62,7 +62,26 @@ struct SheetValuesResponse {
     values: Option<Vec<Vec<String>>>,
 }
 
-fn get_credentials_path(filename: &str) -> std::path::PathBuf {
+fn get_credentials_path(app_handle: &tauri::AppHandle, filename: &str) -> std::path::PathBuf {
+    use tauri::Manager;
+    
+    // 1. Check user AppData directory (writable, custom user configuration)
+    if let Ok(app_data) = app_handle.path().app_data_dir() {
+        let path = app_data.join("credentials").join(filename);
+        if path.exists() {
+            return path;
+        }
+    }
+
+    // 2. Check Tauri resource directory (read-only bundled files in MSI/installed app)
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        let path = resource_dir.join("credentials").join(filename);
+        if path.exists() {
+            return path;
+        }
+    }
+
+    // 3. Check development relative paths
     let path = std::path::PathBuf::from("credentials").join(filename);
     if path.exists() {
         return path;
@@ -71,11 +90,17 @@ fn get_credentials_path(filename: &str) -> std::path::PathBuf {
     if parent_path.exists() {
         return parent_path;
     }
-    path
+
+    // Default fallback: AppData (writable location)
+    if let Ok(app_data) = app_handle.path().app_data_dir() {
+        app_data.join("credentials").join(filename)
+    } else {
+        path
+    }
 }
 
 // Retrieves cached token or fetches a new one using the service account key
-async fn get_access_token() -> Result<String, String> {
+async fn get_access_token(app_handle: &tauri::AppHandle) -> Result<String, String> {
     let now = Utc::now().timestamp();
     
     // Check cache
@@ -88,9 +113,12 @@ async fn get_access_token() -> Result<String, String> {
     }
 
     // Load key from file
-    let path = get_credentials_path("ncnc-db-access-key.json");
+    let path = get_credentials_path(app_handle, "ncnc-db-access-key.json");
     if !path.exists() {
-        return Err("Google Service Account key not found at 'credentials/ncnc-db-access-key.json'.".to_string());
+        return Err(format!(
+            "Google Service Account key not found at '{}'.",
+            path.to_string_lossy()
+        ));
     }
     
     let file_content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
@@ -143,7 +171,7 @@ async fn get_access_token() -> Result<String, String> {
 }
 
 // Resolves sheet name "NCNC_DB_SHEET" to its unique spreadsheet ID via Drive API
-async fn get_spreadsheet_id() -> Result<String, String> {
+async fn get_spreadsheet_id(app_handle: &tauri::AppHandle) -> Result<String, String> {
     // Check cache
     if let Ok(guard) = SPREADSHEET_ID.lock() {
         if let Some(id) = &*guard {
@@ -151,7 +179,7 @@ async fn get_spreadsheet_id() -> Result<String, String> {
         }
     }
 
-    let token = get_access_token().await?;
+    let token = get_access_token(app_handle).await?;
     let client = reqwest::Client::new();
     
     let drive_res = client.get("https://www.googleapis.com/drive/v3/files")
@@ -187,9 +215,9 @@ async fn get_spreadsheet_id() -> Result<String, String> {
     Ok(id)
 }
 
-pub async fn fetch_all_patients() -> Result<Vec<Patient>, String> {
-    let id = get_spreadsheet_id().await?;
-    let token = get_access_token().await?;
+pub async fn fetch_all_patients(app_handle: &tauri::AppHandle) -> Result<Vec<Patient>, String> {
+    let id = get_spreadsheet_id(app_handle).await?;
+    let token = get_access_token(app_handle).await?;
     let client = reqwest::Client::new();
 
     // Read range A:H
@@ -247,9 +275,9 @@ pub async fn fetch_all_patients() -> Result<Vec<Patient>, String> {
     Ok(patients)
 }
 
-pub async fn append_patient(patient: Patient) -> Result<(), String> {
-    let id = get_spreadsheet_id().await?;
-    let token = get_access_token().await?;
+pub async fn append_patient(app_handle: &tauri::AppHandle, patient: Patient) -> Result<(), String> {
+    let id = get_spreadsheet_id(app_handle).await?;
+    let token = get_access_token(app_handle).await?;
     let client = reqwest::Client::new();
 
     let values = vec![vec![
@@ -283,13 +311,13 @@ pub async fn append_patient(patient: Patient) -> Result<(), String> {
     Ok(())
 }
 
-pub async fn update_patient_record(patient: Patient) -> Result<(), String> {
-    let id = get_spreadsheet_id().await?;
-    let token = get_access_token().await?;
+pub async fn update_patient_record(app_handle: &tauri::AppHandle, patient: Patient) -> Result<(), String> {
+    let id = get_spreadsheet_id(app_handle).await?;
+    let token = get_access_token(app_handle).await?;
     let client = reqwest::Client::new();
 
     // Fetch existing values to find row index
-    let current_patients = fetch_all_patients().await?;
+    let current_patients = fetch_all_patients(app_handle).await?;
     let mut row_index = None;
     for (i, p) in current_patients.iter().enumerate() {
         if p.mrn.trim() == patient.mrn.trim() {
@@ -337,13 +365,13 @@ pub async fn update_patient_record(patient: Patient) -> Result<(), String> {
     Ok(())
 }
 
-pub async fn delete_patient_record(mrn: String) -> Result<(), String> {
-    let id = get_spreadsheet_id().await?;
-    let token = get_access_token().await?;
+pub async fn delete_patient_record(app_handle: &tauri::AppHandle, mrn: String) -> Result<(), String> {
+    let id = get_spreadsheet_id(app_handle).await?;
+    let token = get_access_token(app_handle).await?;
     let client = reqwest::Client::new();
 
     // Fetch existing values to find row index
-    let current_patients = fetch_all_patients().await?;
+    let current_patients = fetch_all_patients(app_handle).await?;
     let mut row_index = None;
     for (i, p) in current_patients.iter().enumerate() {
         if p.mrn.trim() == mrn.trim() {

@@ -45,7 +45,26 @@ fn generate_code_challenge(verifier: &str) -> String {
     BASE64_URL_SAFE_NO_PAD.encode(digest)
 }
 
-fn get_credentials_path(filename: &str) -> std::path::PathBuf {
+fn get_credentials_path(app_handle: &tauri::AppHandle, filename: &str) -> std::path::PathBuf {
+    use tauri::Manager;
+    
+    // 1. Check user AppData directory (writable, custom user configuration)
+    if let Ok(app_data) = app_handle.path().app_data_dir() {
+        let path = app_data.join("credentials").join(filename);
+        if path.exists() {
+            return path;
+        }
+    }
+
+    // 2. Check Tauri resource directory (read-only bundled files in MSI/installed app)
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        let path = resource_dir.join("credentials").join(filename);
+        if path.exists() {
+            return path;
+        }
+    }
+
+    // 3. Check development relative paths
     let path = std::path::PathBuf::from("credentials").join(filename);
     if path.exists() {
         return path;
@@ -54,12 +73,18 @@ fn get_credentials_path(filename: &str) -> std::path::PathBuf {
     if parent_path.exists() {
         return parent_path;
     }
-    path
+
+    // Default fallback: AppData (writable location)
+    if let Ok(app_data) = app_handle.path().app_data_dir() {
+        app_data.join("credentials").join(filename)
+    } else {
+        path
+    }
 }
 
 // Read Client ID from credentials file or return default placeholder
-pub fn load_oauth_config() -> Result<OauthConfig, String> {
-    let path = get_credentials_path("oauth-config.json");
+pub fn load_oauth_config(app_handle: &tauri::AppHandle) -> Result<OauthConfig, String> {
+    let path = get_credentials_path(app_handle, "oauth-config.json");
     if !path.exists() {
         // Create folder structure if missing
         if let Some(parent) = path.parent() {
@@ -80,9 +105,13 @@ pub fn load_oauth_config() -> Result<OauthConfig, String> {
 }
 
 pub async fn run_google_login(app_handle: tauri::AppHandle) -> Result<UserInfo, String> {
-    let config = load_oauth_config()?;
+    let config = load_oauth_config(&app_handle)?;
     if config.client_id == "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com" {
-        return Err("Please configure your Google Client ID in 'credentials/oauth-config.json' first.".to_string());
+        let path = get_credentials_path(&app_handle, "oauth-config.json");
+        return Err(format!(
+            "Please configure your Google Client ID in '{}' first.",
+            path.to_string_lossy()
+        ));
     }
 
     let code_verifier = generate_code_verifier();

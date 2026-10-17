@@ -15,12 +15,13 @@ pub async fn login_with_google(
 }
 
 #[tauri::command]
-pub async fn get_patients() -> Result<Vec<Patient>, String> {
-    sheets::fetch_all_patients().await
+pub async fn get_patients(app_handle: tauri::AppHandle) -> Result<Vec<Patient>, String> {
+    sheets::fetch_all_patients(&app_handle).await
 }
 
 #[tauri::command]
 pub async fn add_patient(
+    app_handle: tauri::AppHandle,
     patient: Patient,
     state: tauri::State<'_, AppState>
 ) -> Result<(), String> {
@@ -33,11 +34,12 @@ pub async fn add_patient(
             return Err("Access Denied: Please log in first.".to_string());
         }
     }
-    sheets::append_patient(patient).await
+    sheets::append_patient(&app_handle, patient).await
 }
 
 #[tauri::command]
 pub async fn update_patient(
+    app_handle: tauri::AppHandle,
     patient: Patient,
     state: tauri::State<'_, AppState>
 ) -> Result<(), String> {
@@ -50,11 +52,12 @@ pub async fn update_patient(
             return Err("Access Denied: Please log in first.".to_string());
         }
     }
-    sheets::update_patient_record(patient).await
+    sheets::update_patient_record(&app_handle, patient).await
 }
 
 #[tauri::command]
 pub async fn delete_patient(
+    app_handle: tauri::AppHandle,
     mrn: String,
     state: tauri::State<'_, AppState>
 ) -> Result<(), String> {
@@ -67,5 +70,5 @@ pub async fn delete_patient(
             return Err("Access Denied: Please log in first.".to_string());
         }
     }
-    sheets::delete_patient_record(mrn).await
+    sheets::delete_patient_record(&app_handle, mrn).await
 }
