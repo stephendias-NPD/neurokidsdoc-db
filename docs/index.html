@@ -3,23 +3,43 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NeuroKidsDoc Patient Database | Diagnosis Database</title>
+  <title>NeuroKidsDoc // Diagnosis Database</title>
   <link rel="icon" type="image/png" href="logo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,500;1,6..72,400&display=swap" rel="stylesheet" />
   <style>
     :root {
+      /* App Dark Mode: Espresso & Warm Caramel + Apple Green */
       --bg-primary: #120e0c;
       --bg-secondary: #1b1411;
-      --bg-card: rgba(27, 20, 17, 0.85);
-      --border: rgba(180, 83, 9, 0.22);
+      --bg-tertiary: #291e19;
+      --border: #3a2a22;
+      --border-strong: rgba(180, 83, 9, 0.45);
       --text-primary: #fdfbf7;
-      --text-secondary: #e6dfd9;
-      --text-muted: #9c8f86;
-      --primary: #d97706;
-      --primary-dark: #b45309;
-      --accent-green: #4caf50;
+      --text-secondary: #d6ccc2;
+      --text-muted: #8c827a;
+      --accent: #b45309;
+      --accent-bright: #d97706;
+      --apple-green: #4caf50;
+      --apple-bg: rgba(76, 175, 80, 0.12);
+      --danger: #ef4444;
+    }
+
+    body.light-mode {
+      /* App Light Mode: Clinical Slate & Teal + Apple Green */
+      --bg-primary: #f1f5f9;
+      --bg-secondary: #ffffff;
+      --bg-tertiary: #e2e8f0;
+      --border: #cbd5e1;
+      --border-strong: rgba(13, 148, 136, 0.4);
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --accent: #0d9488;
+      --accent-bright: #0f766e;
+      --apple-green: #2e7d32;
+      --apple-bg: rgba(76, 175, 80, 0.12);
     }
 
     * {
@@ -29,332 +49,651 @@
     }
 
     body {
-      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'IBM Plex Mono', monospace;
       background-color: var(--bg-primary);
-      background-image: radial-gradient(circle at 50% 0%, rgba(180, 83, 9, 0.2) 0%, transparent 60%);
       color: var(--text-primary);
-      line-height: 1.6;
+      font-size: 14px;
+      line-height: 1.65;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .frame {
+      max-width: 1120px;
+      margin: 0 auto;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    .container {
-      max-width: 1040px;
-      margin: 0 auto;
-      padding: 0 1.5rem;
-    }
-
-    header {
-      border-bottom: 1px solid var(--border);
-      background: rgba(18, 14, 12, 0.85);
-      backdrop-filter: blur(12px);
-      position: sticky;
-      top: 0;
-      z-index: 50;
-    }
-
-    .nav {
+    /* Top utility bar */
+    .topbar {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      padding: 1rem 0;
+      align-items: center;
+      padding: 0.9rem 1.75rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+      font-size: 12px;
     }
 
-    .brand {
+    .topbar-left {
       display: flex;
       align-items: center;
       gap: 0.85rem;
-      text-decoration: none;
     }
 
-    .brand img {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
+    .topbar-left img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border-strong);
     }
 
-    .brand-title {
-      font-weight: 700;
-      font-size: 1.2rem;
-      background: linear-gradient(135deg, #fde68a, #d97706);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-
-    .brand-sub {
-      display: block;
-      font-size: 0.78rem;
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
       color: var(--text-muted);
     }
 
-    .hero {
-      text-align: center;
-      padding: 5rem 0 3.5rem;
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--apple-green);
+      box-shadow: 0 0 8px var(--apple-green);
     }
 
-    .hero-logo {
-      width: 112px;
-      height: 112px;
-      border-radius: 24px;
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6), 0 0 40px rgba(180, 83, 9, 0.3);
-      margin-bottom: 1.5rem;
-      border: 1px solid var(--border);
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
 
-    .badge {
-      display: inline-block;
-      padding: 0.3rem 0.9rem;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      background: rgba(180, 83, 9, 0.18);
-      color: #fde68a;
+    .theme-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
       border: 1px solid var(--border);
-      margin-bottom: 1rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .theme-btn:hover {
+      border-color: var(--accent-bright);
+    }
+
+    /* Main split header */
+    .masthead {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      border-bottom: 1px solid var(--border);
+    }
+
+    @media (max-width: 860px) {
+      .masthead {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .masthead-main {
+      padding: 3rem 2rem;
+      border-right: 1px solid var(--border);
+    }
+
+    .kicker {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent-bright);
+      margin-bottom: 0.85rem;
     }
 
     h1 {
-      font-size: clamp(2.1rem, 4vw, 3.1rem);
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      background: linear-gradient(135deg, #fffbeb 0%, #fde68a 45%, #d97706 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 0.75rem;
+      font-family: 'Newsreader', Georgia, serif;
+      font-weight: 500;
+      font-size: clamp(2.1rem, 3.6vw, 2.9rem);
+      line-height: 1.15;
+      margin-bottom: 1.1rem;
+      color: var(--text-primary);
     }
 
-    .hero p {
-      max-width: 640px;
-      margin: 0 auto 2.2rem;
+    .lead {
       color: var(--text-secondary);
-      font-size: 1.08rem;
+      font-size: 13.5px;
+      max-width: 54ch;
+      margin-bottom: 2rem;
     }
 
-    .cta-group {
+    .download-row {
       display: flex;
-      gap: 1rem;
-      justify-content: center;
       flex-wrap: wrap;
+      gap: 0.85rem;
+      align-items: center;
     }
 
-    .btn-primary {
+    .btn-install {
       display: inline-flex;
       align-items: center;
-      gap: 0.6rem;
-      background: linear-gradient(135deg, #d97706, #b45309);
-      color: #ffffff;
-      text-decoration: none;
+      gap: 0.65rem;
+      background: var(--apple-bg);
+      color: var(--apple-green);
+      border: 1px solid var(--apple-green);
+      padding: 0.7rem 1.25rem;
+      font-family: 'IBM Plex Mono', monospace;
       font-weight: 600;
-      padding: 0.9rem 1.8rem;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(180, 83, 9, 0.35);
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      font-size: 13px;
+      text-decoration: none;
+      border-radius: 4px;
+      transition: background 0.15s ease, color 0.15s ease;
     }
 
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 14px 30px rgba(180, 83, 9, 0.5);
+    .btn-install:hover {
+      background: var(--apple-green);
+      color: #ffffff;
     }
 
-    .btn-secondary {
+    .btn-outline {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      background: var(--bg-secondary);
+      background: transparent;
       color: var(--text-secondary);
+      border: 1px solid var(--border);
+      padding: 0.7rem 1.1rem;
+      font-size: 13px;
       text-decoration: none;
-      font-weight: 500;
-      padding: 0.9rem 1.5rem;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      transition: background 0.15s ease;
+      border-radius: 4px;
     }
 
-    .btn-secondary:hover {
-      background: #291e19;
+    .btn-outline:hover {
+      border-color: var(--accent-bright);
+      color: var(--text-primary);
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    /* Right metadata panel */
+    .masthead-meta {
+      background: var(--bg-secondary);
+      padding: 2.25rem 1.75rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
       gap: 1.25rem;
-      margin: 2rem 0 3.5rem;
     }
 
-    .card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 1.6rem;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+    .spec-list {
+      list-style: none;
+      border-top: 1px solid var(--border);
     }
 
-    .card h3 {
-      color: #fde68a;
-      font-size: 1.15rem;
-      margin-bottom: 0.5rem;
+    .spec-list li {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.55rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12.5px;
     }
 
-    .card p {
+    .spec-key {
       color: var(--text-muted);
-      font-size: 0.94rem;
     }
 
-    .shortcuts-section {
-      margin-bottom: 4rem;
+    .spec-val {
+      color: var(--text-primary);
+      font-weight: 500;
+      text-align: right;
     }
 
-    .shortcuts-table {
+    /* Live replica of the actual app UI */
+    .preview-section {
+      padding: 2.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-tag {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .app-window {
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-primary);
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+    }
+
+    .app-header {
+      background: var(--bg-secondary);
+      padding: 0.75rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .app-header-title strong {
+      color: var(--accent-bright);
+      display: block;
+      font-size: 13.5px;
+    }
+
+    .app-header-title span {
+      color: var(--text-muted);
+      font-size: 11px;
+    }
+
+    .app-body {
+      display: grid;
+      grid-template-columns: 1.6fr 1fr;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    @media (max-width: 860px) {
+      .app-body {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .mock-search {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr) auto auto;
+      gap: 0.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .mock-input {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.55rem;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-radius: 4px;
+    }
+
+    .mock-btn {
+      padding: 0.35rem 0.65rem;
+      font-size: 11px;
+      border-radius: 4px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .mock-table {
       width: 100%;
       border-collapse: collapse;
-      background: var(--bg-card);
+      font-size: 11.5px;
+      background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      overflow: hidden;
     }
 
-    .shortcuts-table th,
-    .shortcuts-table td {
-      padding: 0.85rem 1.2rem;
+    .mock-table th,
+    .mock-table td {
+      padding: 0.5rem 0.65rem;
+      border-bottom: 1px solid var(--border);
       text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
-    .shortcuts-table th {
-      background: #231915;
-      color: #fde68a;
-      font-size: 0.82rem;
+    .mock-table th {
+      color: var(--text-muted);
+      font-size: 10.5px;
+      background: var(--bg-tertiary);
+    }
+
+    .mock-row-active {
+      background: rgba(180, 83, 9, 0.16);
+    }
+
+    .mock-form {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      padding: 0.9rem;
+      border-radius: 6px;
+      font-size: 11.5px;
+    }
+
+    .readonly-banner {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #f59e0b;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      font-size: 11px;
+      margin-bottom: 0.75rem;
+    }
+
+    .mock-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.45rem;
+      margin-top: 0.75rem;
+    }
+
+    .mock-locked {
+      opacity: 0.38;
+      border: 1px solid var(--border);
+      padding: 0.35rem;
+      text-align: center;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* Two-column technical details */
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid var(--border);
+    }
+
+    @media (max-width: 860px) {
+      .details-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .detail-col {
+      padding: 2.25rem 2rem;
+    }
+
+    .detail-col:first-child {
+      border-right: 1px solid var(--border);
+    }
+
+    h2 {
+      font-size: 13px;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.08em;
+      color: var(--accent-bright);
+      margin-bottom: 1rem;
+    }
+
+    .access-matrix,
+    .key-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12.5px;
+    }
+
+    .access-matrix th,
+    .access-matrix td,
+    .key-table th,
+    .key-table td {
+      padding: 0.55rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .access-matrix th,
+    .key-table th {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 11px;
     }
 
     kbd {
-      background: #291e19;
+      background: var(--bg-tertiary);
       border: 1px solid var(--border);
-      padding: 0.18rem 0.5rem;
-      border-radius: 6px;
-      font-family: monospace;
-      font-size: 0.85rem;
-      color: #fde68a;
+      padding: 0.1rem 0.45rem;
+      border-radius: 3px;
+      font-size: 11.5px;
+      color: var(--accent-bright);
     }
 
     footer {
       margin-top: auto;
-      border-top: 1px solid var(--border);
-      padding: 1.75rem 0;
-      text-align: center;
+      padding: 1.25rem 2rem;
+      background: var(--bg-secondary);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      font-size: 12px;
       color: var(--text-muted);
-      font-size: 0.88rem;
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="container nav">
-      <a href="#" class="brand">
-        <img src="logo.png" alt="NeuroKidsDoc Logo" />
-        <div>
-          <span class="brand-title">NeuroKidsDoc Patient Database</span>
-          <span class="brand-sub">Diagnosis Database</span>
+  <div class="frame">
+    <header class="topbar">
+      <div class="topbar-left">
+        <img src="logo.png" alt="NeuroKidsDoc icon" />
+        <strong>neurokidsdoc-db</strong>
+        <span class="status-pill"><span class="dot"></span> v0.1.0 // x64-windows-msi</span>
+      </div>
+      <div class="topbar-right">
+        <button class="theme-btn" id="themeToggle" onclick="toggleTheme()">[Theme: Coffee Dark]</button>
+      </div>
+    </header>
+
+    <section class="masthead">
+      <div class="masthead-main">
+        <div class="kicker">Pediatric Neurology // Clinical Registry</div>
+        <h1>NeuroKidsDoc Patient Database</h1>
+        <p class="lead">
+          A lightweight native Windows desktop client for searching and maintaining clinical diagnosis records. Built with Rust + Tauri v2, backed directly by Google Workspace OAuth 2.0 and Google Sheets REST v4.
+        </p>
+        <div class="download-row">
+          <a href="https://github.com/stephendias-NPD/neurokidsdoc-db/releases/latest" class="btn-install">
+            [Download .MSI Installer]
+          </a>
+          <a href="https://github.com/stephendias-NPD/neurokidsdoc-db/releases" class="btn-outline">
+            Release Notes &rarr;
+          </a>
         </div>
-      </a>
-      <a href="https://github.com/stephendias-NPD/neurokidsdoc-db/releases/latest" class="btn-secondary">
-        Latest Release
-      </a>
-    </div>
-  </header>
+      </div>
 
-  <main class="container">
-    <section class="hero">
-      <img src="logo.png" alt="NeuroKidsDoc Icon" class="hero-logo" />
-      <div><span class="badge">Windows Desktop Application (Tauri v2 + Rust)</span></div>
-      <h1>NeuroKidsDoc Patient Database</h1>
-      <p>
-        Fast, native pediatric neurology diagnosis &amp; patient record manager with Google Workspace authentication and role-based clinical access control.
-      </p>
-      <div class="cta-group">
-        <a href="https://github.com/stephendias-NPD/neurokidsdoc-db/releases/latest" class="btn-primary">
-          ⬇ Download for Windows (.msi)
-        </a>
-        <a href="https://github.com/stephendias-NPD/neurokidsdoc-db" class="btn-secondary">
-          View on GitHub
-        </a>
+      <aside class="masthead-meta">
+        <div class="kicker" style="margin-bottom: 0.25rem;">System Specifications</div>
+        <ul class="spec-list">
+          <li>
+            <span class="spec-key">Target OS</span>
+            <span class="spec-val">Windows 10 / 11 (64-bit)</span>
+          </li>
+          <li>
+            <span class="spec-key">Install Path</span>
+            <span class="spec-val">C:\Program Files\...</span>
+          </li>
+          <li>
+            <span class="spec-key">Allowed Domains</span>
+            <span class="spec-val">@neuropedia.ae, @cdcdubai.ae</span>
+          </li>
+          <li>
+            <span class="spec-key">Write Authority</span>
+            <span class="spec-val">stephen.dias@neuropedia.ae</span>
+          </li>
+          <li>
+            <span class="spec-key">Bundled Keys</span>
+            <span class="spec-val">None (User OAuth Token)</span>
+          </li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="preview-section">
+      <div class="section-tag">
+        <span>Interface Schematic // Read-Only Clinician Session</span>
+        <span>1100 &times; 720 native window</span>
+      </div>
+
+      <div class="app-window">
+        <div class="app-header">
+          <div class="app-header-title">
+            <strong>NeuroKidsDoc Patient Database</strong>
+            <span>Diagnosis Database</span>
+          </div>
+          <div style="color: var(--text-muted); font-size: 11px;">
+            clinician@neuropedia.ae &nbsp;|&nbsp; [Sign Out]
+          </div>
+        </div>
+
+        <div class="app-body">
+          <div>
+            <div class="mock-search">
+              <div class="mock-input">Search Name...</div>
+              <div class="mock-input">Search MRN...</div>
+              <div class="mock-input">Search Diagnosis...</div>
+              <div class="mock-input">Location...</div>
+              <div class="mock-btn">Sync</div>
+              <div class="mock-input" style="color: var(--text-secondary);">Clear</div>
+            </div>
+
+            <table class="mock-table">
+              <thead>
+                <tr>
+                  <th>NAME &#9650;</th>
+                  <th>MRN</th>
+                  <th>LOCATION</th>
+                  <th>GENDER</th>
+                  <th>DIAGNOSIS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="mock-row-active">
+                  <td>A. Al-Mansoori</td>
+                  <td>NPD-10482</td>
+                  <td>Dubai</td>
+                  <td>Male</td>
+                  <td>Childhood Absence Epilepsy</td>
+                </tr>
+                <tr>
+                  <td>S. Rahman</td>
+                  <td>CDC-20914</td>
+                  <td>CDC Dubai</td>
+                  <td>Female</td>
+                  <td>Benign Rolandic Epilepsy</td>
+                </tr>
+                <tr>
+                  <td>Z. Haddad</td>
+                  <td>NPD-10839</td>
+                  <td>Sharjah</td>
+                  <td>Male</td>
+                  <td>Duchenne Muscular Dystrophy</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mock-form">
+            <div style="font-weight: 600; margin-bottom: 0.45rem;">Patient Record Details</div>
+            <div class="readonly-banner">
+              <strong>Read-Only Mode:</strong> Contact Stephen Dias for write access.
+            </div>
+            <div style="color: var(--text-muted); font-size: 11px; margin-bottom: 0.25rem;">
+              MRN: NPD-10482 &bull; Diagnosis: Childhood Absence Epilepsy
+            </div>
+            <div class="mock-actions">
+              <div class="mock-locked">&#128274; Add New</div>
+              <div class="mock-locked">&#128274; Update</div>
+              <div class="mock-locked">&#128274; Delete</div>
+              <div class="mock-locked" style="opacity: 0.9;">Clear</div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
-    <section class="grid">
-      <div class="card">
-        <h3>🔐 Multi-Domain Google Sign-In</h3>
-        <p>
-          Authenticated via Google OAuth 2.0 PKCE exclusively for authorized clinic staff with <strong>@neuropedia.ae</strong> and <strong>@cdcdubai.ae</strong> accounts.
-        </p>
+    <section class="details-grid">
+      <div class="detail-col">
+        <h2>01 // Role &amp; Domain Matrix</h2>
+        <table class="access-matrix">
+          <thead>
+            <tr>
+              <th>Identity</th>
+              <th>Search / View</th>
+              <th>Add / Edit / Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>stephen.dias@neuropedia.ae</td>
+              <td style="color: var(--apple-green);">Allowed</td>
+              <td style="color: var(--apple-green);">Allowed (Admin)</td>
+            </tr>
+            <tr>
+              <td>*@neuropedia.ae</td>
+              <td style="color: var(--apple-green);">Allowed</td>
+              <td style="color: var(--text-muted);">Locked (Read-Only)</td>
+            </tr>
+            <tr>
+              <td>*@cdcdubai.ae</td>
+              <td style="color: var(--apple-green);">Allowed</td>
+              <td style="color: var(--text-muted);">Locked (Read-Only)</td>
+            </tr>
+            <tr>
+              <td>All other domains</td>
+              <td style="color: var(--danger);">Blocked</td>
+              <td style="color: var(--danger);">Blocked</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div class="card">
-        <h3>🛡️ Strict Role-Based Access</h3>
-        <p>
-          Full create, update, and delete privileges are restricted to the administrator (<strong>stephen.dias@neuropedia.ae</strong>), while clinic colleagues have safe Read-Only search access.
-        </p>
-      </div>
-      <div class="card">
-        <h3>⚡ Instant Multi-Field Search</h3>
-        <p>
-          Filter patient records in real time across Name, MRN, Diagnosis, and Clinic Location with sortable columns and dark/light clinical themes.
-        </p>
+
+      <div class="detail-col">
+        <h2>02 // KeyboardBindings</h2>
+        <table class="key-table">
+          <thead>
+            <tr>
+              <th>Keybinding</th>
+              <th>Command</th>
+              <th>Scope</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><kbd>Alt + S</kbd></td>
+              <td>Focus patient name filter</td>
+              <td>All staff</td>
+            </tr>
+            <tr>
+              <td><kbd>Alt + Y</kbd></td>
+              <td>Sync records from Google Sheet</td>
+              <td>All staff</td>
+            </tr>
+            <tr>
+              <td><kbd>Alt + C</kbd></td>
+              <td>Clear detail form fields</td>
+              <td>All staff</td>
+            </tr>
+            <tr>
+              <td><kbd>Alt + A / U / D</kbd></td>
+              <td>Add / Update / Delete record</td>
+              <td>Admin only</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <section class="shortcuts-section">
-      <h2 style="margin-bottom: 1rem; font-size: 1.35rem; color: #fde68a;">Keyboard Shortcuts</h2>
-      <table class="shortcuts-table">
-        <thead>
-          <tr>
-            <th>Shortcut</th>
-            <th>Action</th>
-            <th>Access Level</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><kbd>Alt + S</kbd></td>
-            <td>Focus Patient Name Search</td>
-            <td>All Authorized Staff</td>
-          </tr>
-          <tr>
-            <td><kbd>Alt + C</kbd></td>
-            <td>Clear Detail Form Fields</td>
-            <td>All Authorized Staff</td>
-          </tr>
-          <tr>
-            <td><kbd>Alt + Y</kbd></td>
-            <td>Sync Records with Google Sheets</td>
-            <td>All Authorized Staff</td>
-          </tr>
-          <tr>
-            <td><kbd>Alt + A</kbd></td>
-            <td>Add New Patient Record</td>
-            <td>Admin Only (stephen.dias@neuropedia.ae)</td>
-          </tr>
-          <tr>
-            <td><kbd>Alt + U</kbd></td>
-            <td>Update Selected Patient Record</td>
-            <td>Admin Only (stephen.dias@neuropedia.ae)</td>
-          </tr>
-          <tr>
-            <td><kbd>Alt + D</kbd></td>
-            <td>Delete Selected Patient Record</td>
-            <td>Admin Only (stephen.dias@neuropedia.ae)</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-  </main>
+    <footer>
+      <span>Created by Dr. Stephen Dias // Pediatric Neurologist &amp; Developer</span>
+      <span>Neuropedia Children's Neuroscience Center &bull; CDC Dubai</span>
+    </footer>
+  </div>
 
-  <footer>
-    <div class="container">
-      Created by Dr. Stephen Dias &bull; Pediatric Neurology &bull; NeuroKidsDoc Patient Database
-    </div>
-  </footer>
+  <script>
+    function toggleTheme() {
+      const body = document.body;
+      const btn = document.getElementById('themeToggle');
+      body.classList.toggle('light-mode');
+      if (body.classList.contains('light-mode')) {
+        btn.textContent = '[Theme: Clinical Teal Light]';
+      } else {
+        btn.textContent = '[Theme: Coffee Dark]';
+      }
+    }
+  </script>
 </body>
 </html>
