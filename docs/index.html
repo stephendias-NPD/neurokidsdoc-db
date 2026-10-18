@@ -471,7 +471,6 @@
       <div class="topbar-left">
         <img src="logo.png" alt="NeuroKidsDoc icon" />
         <strong>neurokidsdoc-db</strong>
-        <span class="status-pill" id="versionPill"><span class="dot"></span> v0.1.0 // x64-windows-msi</span>
       </div>
       <div class="topbar-right">
         <button class="theme-btn" id="themeToggle" onclick="toggleTheme()">[Theme: Coffee Dark]</button>
@@ -483,7 +482,7 @@
         <div class="kicker">Pediatric Neurology // Clinical Registry</div>
         <h1>NeuroKidsDoc Patient Database</h1>
         <p class="lead">
-          A lightweight native Windows desktop client for searching and maintaining clinical diagnosis records. Built with Rust + Tauri v2, backed directly by Google Workspace OAuth 2.0 and Google Sheets REST v4.
+          A lightweight native Windows desktop client for searching and maintaining clinical diagnosis records.
         </p>
         <div class="download-row">
           <a id="msiDownloadBtn" href="https://github.com/stephendias-NPD/neurokidsdoc-db/releases/latest/download/NeuroKidsDoc.Patient.Database_0.1.0_x64_en-US.msi" class="btn-install" download>
@@ -514,10 +513,6 @@
             <span class="spec-key">Write Authority</span>
             <span class="spec-val">stephen.dias@neuropedia.ae</span>
           </li>
-          <li>
-            <span class="spec-key">Bundled Keys</span>
-            <span class="spec-val">None (User OAuth Token)</span>
-          </li>
         </ul>
       </aside>
     </section>
@@ -525,7 +520,6 @@
     <section class="preview-section">
       <div class="section-tag">
         <span>Interface Schematic // Read-Only Clinician Session</span>
-        <span>1100 &times; 720 native window</span>
       </div>
 
       <div class="app-window">
@@ -702,13 +696,11 @@
         const release = await res.json();
         const msiAsset = (release.assets || []).find(a => a.name && a.name.toLowerCase().endsWith('.msi'));
         const btn = document.getElementById('msiDownloadBtn');
-        const pill = document.getElementById('versionPill');
         if (msiAsset && msiAsset.browser_download_url && btn) {
           btn.href = msiAsset.browser_download_url;
         }
-        if (release.tag_name) {
-          if (btn) btn.textContent = `[Download .MSI Installer // ${release.tag_name}]`;
-          if (pill) pill.innerHTML = `<span class="dot"></span> ${release.tag_name} // x64-windows-msi`;
+        if (release.tag_name && btn) {
+          btn.textContent = `[Download .MSI Installer // ${release.tag_name}]`;
         }
       } catch (_) {}
     })();
