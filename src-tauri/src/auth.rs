@@ -22,9 +22,18 @@ pub struct UserInfo {
     pub is_admin: bool,
 }
 
+#[derive(Debug, Clone)]
+pub struct OauthSession {
+    pub access_token: String,
+    pub refresh_token: Option<String>,
+    pub expires_at: i64,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct TokenResponse {
     access_token: String,
+    refresh_token: Option<String>,
+    expires_in: Option<i64>,
     id_token: Option<String>,
 }
 
@@ -56,15 +65,7 @@ fn get_credentials_path(app_handle: &tauri::AppHandle, filename: &str) -> std::p
         }
     }
 
-    // 2. Check Tauri resource directory (read-only bundled files in MSI/installed app)
-    if let Ok(resource_dir) = app_handle.path().resource_dir() {
-        let path = resource_dir.join("credentials").join(filename);
-        if path.exists() {
-            return path;
-        }
-    }
-
-    // 3. Check development relative paths
+    // 2. Check development relative paths
     let path = std::path::PathBuf::from("credentials").join(filename);
     if path.exists() {
         return path;
@@ -74,29 +75,20 @@ fn get_credentials_path(app_handle: &tauri::AppHandle, filename: &str) -> std::p
         return parent_path;
     }
 
-    // Default fallback: AppData (writable location)
-    if let Ok(app_data) = app_handle.path().app_data_dir() {
-        app_data.join("credentials").join(filename)
-    } else {
-        path
-    }
+    path
 }
 
-// Read Client ID from credentials file or return default placeholder
+// Read OAuth config from obfuscated embedded binary data (or local dev override)
 pub fn load_oauth_config(app_handle: &tauri::AppHandle) -> Result<OauthConfig, String> {
+    if let Some(embedded_json) = crate::embedded_creds::get_embedded_oauth_json() {
+        if let Ok(config) = serde_json::from_str::<OauthConfig>(&embedded_json) {
+            return Ok(config);
+        }
+    }
+
     let path = get_credentials_path(app_handle, "oauth-config.json");
     if !path.exists() {
-        // Create folder structure if missing
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        let default_config = OauthConfig {
-            client_id: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com".to_string(),
-            client_secret: Some("YOUR_GOOGLE_CLIENT_SECRET".to_string()),
-        };
-        let content = serde_json::to_string_pretty(&default_config).map_err(|e| e.to_string())?;
-        std::fs::write(&path, content).map_err(|e| e.to_string())?;
-        return Ok(default_config);
+        return Err("OAuth configuration is missing.".to_string());
     }
     
     let file_content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
@@ -104,14 +96,10 @@ pub fn load_oauth_config(app_handle: &tauri::AppHandle) -> Result<OauthConfig, S
     Ok(config)
 }
 
-pub async fn run_google_login(app_handle: tauri::AppHandle) -> Result<UserInfo, String> {
+pub async fn run_google_login(app_handle: tauri::AppHandle) -> Result<(UserInfo, OauthSession), String> {
     let config = load_oauth_config(&app_handle)?;
     if config.client_id == "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com" {
-        let path = get_credentials_path(&app_handle, "oauth-config.json");
-        return Err(format!(
-            "Please configure your Google Client ID in '{}' first.",
-            path.to_string_lossy()
-        ));
+        return Err("Google Client ID is not configured.".to_string());
     }
 
     let code_verifier = generate_code_verifier();
@@ -128,13 +116,15 @@ pub async fn run_google_login(app_handle: tauri::AppHandle) -> Result<UserInfo, 
 
     let redirect_uri = format!("http://127.0.0.1:{}", port);
     
-    // Construct Google OAuth URL
+    // Construct Google OAuth URL requesting spreadsheets access under the user's own identity
     let auth_url = format!(
         "https://accounts.google.com/o/oauth2/v2/auth?\
         client_id={}&\
         redirect_uri={}&\
         response_type=code&\
-        scope=openid%20email%20profile&\
+        scope=openid%20email%20profile%20https://www.googleapis.com/auth/spreadsheets&\
+        access_type=offline&\
+        prompt=select_account&\
         code_challenge={}&\
         code_challenge_method=S256",
         config.client_id, redirect_uri, code_challenge
@@ -230,6 +220,13 @@ pub async fn run_google_login(app_handle: tauri::AppHandle) -> Result<UserInfo, 
         .await
         .map_err(|e| format!("Failed to parse token response: {}", e))?;
 
+    let now = chrono::Utc::now().timestamp();
+    let session = OauthSession {
+        access_token: token_data.access_token.clone(),
+        refresh_token: token_data.refresh_token,
+        expires_at: now + token_data.expires_in.unwrap_or(3600),
+    };
+
     // Fetch user info from Google
     let user_info_res = client.get("https://www.googleapis.com/oauth2/v3/userinfo")
         .header("Authorization", format!("Bearer {}", token_data.access_token))
@@ -254,16 +251,88 @@ pub async fn run_google_login(app_handle: tauri::AppHandle) -> Result<UserInfo, 
         .map_err(|e| format!("Failed to parse user info: {}", e))?;
 
     // Domain validation
-    let email_lower = user_info.email.to_lowercase();
+    let email_lower = user_info.email.trim().to_lowercase();
     if email_lower.ends_with("@neuropedia.ae") || email_lower.ends_with("@cdcdubai.ae") {
         let is_admin = email_lower == "stephen.dias@neuropedia.ae";
-        Ok(UserInfo {
-            email: user_info.email,
-            name: user_info.name,
-            picture: user_info.picture,
-            is_admin,
-        })
+        Ok((
+            UserInfo {
+                email: user_info.email,
+                name: user_info.name,
+                picture: user_info.picture,
+                is_admin,
+            },
+            session,
+        ))
     } else {
         Err(format!("Access Denied: {} is not from an authorized domain.", user_info.email))
     }
+}
+
+pub async fn get_valid_access_token(
+    app_handle: &tauri::AppHandle,
+    state: &tauri::State<'_, crate::AppState>,
+) -> Result<String, String> {
+    let now = chrono::Utc::now().timestamp();
+    let (current_token, refresh_token_opt, is_valid) = {
+        let guard = state
+            .oauth_session
+            .lock()
+            .map_err(|_| "Session lock error.".to_string())?;
+        let session = guard
+            .as_ref()
+            .ok_or_else(|| "Not logged in. Please sign in with Google first.".to_string())?;
+        (
+            session.access_token.clone(),
+            session.refresh_token.clone(),
+            session.expires_at > now + 60,
+        )
+    };
+
+    if is_valid {
+        return Ok(current_token);
+    }
+
+    let refresh_token = refresh_token_opt
+        .ok_or_else(|| "Session expired. Please sign out and sign in again.".to_string())?;
+    let config = load_oauth_config(app_handle)?;
+    let client = reqwest::Client::new();
+    let mut params = vec![
+        ("client_id", config.client_id),
+        ("refresh_token", refresh_token.clone()),
+        ("grant_type", "refresh_token".to_string()),
+    ];
+    if let Some(secret) = config.client_secret {
+        if !secret.is_empty() && secret != "YOUR_GOOGLE_CLIENT_SECRET" {
+            params.push(("client_secret", secret));
+        }
+    }
+
+    let res = client
+        .post("https://oauth2.googleapis.com/token")
+        .form(&params)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to refresh token: {}", e))?;
+
+    if !res.status().is_success() {
+        return Err("Session expired. Please sign in again.".to_string());
+    }
+
+    let token_data: TokenResponse = res
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse refreshed token: {}", e))?;
+
+    let new_token = token_data.access_token;
+    if let Ok(mut guard) = state.oauth_session.lock() {
+        if let Some(session) = guard.as_mut() {
+            session.access_token = new_token.clone();
+            session.expires_at = now + token_data.expires_in.unwrap_or(3600);
+            if let Some(new_rt) = token_data.refresh_token {
+                session.refresh_token = Some(new_rt);
+            }
+        }
+    }
+
+    Ok(new_token)
 }

@@ -534,12 +534,18 @@ body {
   border: 1px solid transparent;
 }
 
+.action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(60%);
+}
+
 .action-btn.add {
   background: var(--success-bg);
   color: var(--success);
   border-color: rgba(76, 175, 80, 0.2);
 }
-.action-btn.add:hover {
+.action-btn.add:hover:not(:disabled) {
   background: var(--success);
   color: #ffffff;
 }
@@ -549,7 +555,7 @@ body {
   color: var(--primary);
   border-color: var(--border-color);
 }
-.action-btn.update:hover {
+.action-btn.update:hover:not(:disabled) {
   background: var(--primary);
   color: #ffffff;
 }
@@ -559,7 +565,7 @@ body {
   color: var(--danger);
   border-color: rgba(239, 68, 68, 0.2);
 }
-.action-btn.delete:hover {
+.action-btn.delete:hover:not(:disabled) {
   background: var(--danger);
   color: #ffffff;
 }
@@ -569,7 +575,7 @@ body {
   color: var(--text-secondary);
   border-color: var(--border-color);
 }
-.action-btn.clear:hover {
+.action-btn.clear:hover:not(:disabled) {
   background: var(--border-color);
   color: var(--text-primary);
 }
@@ -580,7 +586,7 @@ body {
   color: var(--primary);
   border-color: var(--border-color);
 }
-.action-btn.sync:hover {
+.action-btn.sync:hover:not(:disabled) {
   background: var(--primary);
   color: #ffffff;
 }

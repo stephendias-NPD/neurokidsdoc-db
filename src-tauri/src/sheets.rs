@@ -1,31 +1,6 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Mutex;
-use chrono::Utc;
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 
-static SPREADSHEET_ID: Mutex<Option<String>> = Mutex::new(None);
-static SERVICE_ACCOUNT_TOKEN: Mutex<Option<(String, i64)>> = Mutex::new(None); // (token, expiration_timestamp)
-
-#[derive(Debug, Deserialize)]
-struct ServiceAccountKey {
-    client_email: String,
-    private_key: String,
-    token_uri: String,
-}
-
-#[derive(Debug, Serialize)]
-struct Claims {
-    iss: String,
-    scope: String,
-    aud: String,
-    exp: i64,
-    iat: i64,
-}
-
-#[derive(Debug, Deserialize)]
-struct TokenResponse {
-    access_token: String,
-}
+const SPREADSHEET_ID: &str = "1xnsjSHo4iShZt3mv6p5iuKYIudGIozlSFyNvbYx9oik";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Patient {
@@ -48,191 +23,35 @@ pub struct Patient {
 }
 
 #[derive(Debug, Deserialize)]
-struct DriveSearchResponse {
-    files: Vec<DriveFile>,
-}
-
-#[derive(Debug, Deserialize)]
-struct DriveFile {
-    id: String,
-}
-
-#[derive(Debug, Deserialize)]
 struct SheetValuesResponse {
     values: Option<Vec<Vec<String>>>,
 }
 
-fn get_credentials_path(app_handle: &tauri::AppHandle, filename: &str) -> std::path::PathBuf {
-    use tauri::Manager;
-    
-    // 1. Check user AppData directory (writable, custom user configuration)
-    if let Ok(app_data) = app_handle.path().app_data_dir() {
-        let path = app_data.join("credentials").join(filename);
-        if path.exists() {
-            return path;
-        }
-    }
-
-    // 2. Check Tauri resource directory (read-only bundled files in MSI/installed app)
-    if let Ok(resource_dir) = app_handle.path().resource_dir() {
-        let path = resource_dir.join("credentials").join(filename);
-        if path.exists() {
-            return path;
-        }
-    }
-
-    // 3. Check development relative paths
-    let path = std::path::PathBuf::from("credentials").join(filename);
-    if path.exists() {
-        return path;
-    }
-    let parent_path = std::path::PathBuf::from("../credentials").join(filename);
-    if parent_path.exists() {
-        return parent_path;
-    }
-
-    // Default fallback: AppData (writable location)
-    if let Ok(app_data) = app_handle.path().app_data_dir() {
-        app_data.join("credentials").join(filename)
-    } else {
-        path
-    }
-}
-
-// Retrieves cached token or fetches a new one using the service account key
-async fn get_access_token(app_handle: &tauri::AppHandle) -> Result<String, String> {
-    let now = Utc::now().timestamp();
-    
-    // Check cache
-    if let Ok(guard) = SERVICE_ACCOUNT_TOKEN.lock() {
-        if let Some((token, expiry)) = &*guard {
-            if *expiry > now + 60 {
-                return Ok(token.clone());
-            }
-        }
-    }
-
-    // Load key from file
-    let path = get_credentials_path(app_handle, "ncnc-db-access-key.json");
-    if !path.exists() {
-        return Err(format!(
-            "Google Service Account key not found at '{}'.",
-            path.to_string_lossy()
-        ));
-    }
-    
-    let file_content = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
-    let key_data: ServiceAccountKey = serde_json::from_str(&file_content)
-        .map_err(|e| format!("Failed to parse service account key: {}", e))?;
-
-    // Create JWT
-    let claims = Claims {
-        iss: key_data.client_email.clone(),
-        scope: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive".to_string(),
-        aud: key_data.token_uri.clone(),
-        exp: now + 3600,
-        iat: now,
-    };
-
-    let encoding_key = EncodingKey::from_rsa_pem(key_data.private_key.as_bytes())
-        .map_err(|e| format!("Invalid private key PEM format: {}", e))?;
-    let header = Header::new(Algorithm::RS256);
-    let signed_jwt = encode(&header, &claims, &encoding_key)
-        .map_err(|e| format!("Failed to sign JWT: {}", e))?;
-
-    // Exchange for Access Token
-    let client = reqwest::Client::new();
-    let token_res = client.post(&key_data.token_uri)
-        .form(&[
-            ("grant_type", "urn:ietf:params:oauth:grant-type:jwt-bearer"),
-            ("assertion", &signed_jwt),
-        ])
-        .send()
-        .await
-        .map_err(|e| format!("Failed to call oauth endpoint: {}", e))?;
-
-    if !token_res.status().is_success() {
-        let text = token_res.text().await.unwrap_or_default();
-        return Err(format!("Google Auth exchange error: {}", text));
-    }
-
-    let token_data: TokenResponse = token_res.json()
-        .await
-        .map_err(|e| format!("Failed to decode token JSON: {}", e))?;
-
-    let token = token_data.access_token;
-    
-    // Save to cache
-    if let Ok(mut guard) = SERVICE_ACCOUNT_TOKEN.lock() {
-        *guard = Some((token.clone(), now + 3600));
-    }
-
-    Ok(token)
-}
-
-// Resolves sheet name "NCNC_DB_SHEET" to its unique spreadsheet ID via Drive API
-async fn get_spreadsheet_id(app_handle: &tauri::AppHandle) -> Result<String, String> {
-    // Check cache
-    if let Ok(guard) = SPREADSHEET_ID.lock() {
-        if let Some(id) = &*guard {
-            return Ok(id.clone());
-        }
-    }
-
-    let token = get_access_token(app_handle).await?;
-    let client = reqwest::Client::new();
-    
-    let drive_res = client.get("https://www.googleapis.com/drive/v3/files")
-        .query(&[
-            ("q", "name='NCNC_DB_SHEET' and mimeType='application/vnd.google-apps.spreadsheet'"),
-            ("fields", "files(id)"),
-        ])
-        .header("Authorization", format!("Bearer {}", token))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to search Google Drive: {}", e))?;
-
-    if !drive_res.status().is_success() {
-        let text = drive_res.text().await.unwrap_or_default();
-        return Err(format!("Drive API error: {}", text));
-    }
-
-    let search_res: DriveSearchResponse = drive_res.json()
-        .await
-        .map_err(|e| format!("Failed to parse Drive response: {}", e))?;
-
-    if search_res.files.is_empty() {
-        return Err("Spreadsheet named 'NCNC_DB_SHEET' was not found on your Google Drive.".to_string());
-    }
-
-    let id = search_res.files[0].id.clone();
-    
-    // Save cache
-    if let Ok(mut guard) = SPREADSHEET_ID.lock() {
-        *guard = Some(id.clone());
-    }
-
-    Ok(id)
-}
-
-pub async fn fetch_all_patients(app_handle: &tauri::AppHandle) -> Result<Vec<Patient>, String> {
-    let id = get_spreadsheet_id(app_handle).await?;
-    let token = get_access_token(app_handle).await?;
+pub async fn fetch_all_patients(token: &str) -> Result<Vec<Patient>, String> {
     let client = reqwest::Client::new();
 
-    // Read range A:H
-    let res = client.get(format!("https://sheets.googleapis.com/v4/spreadsheets/{}/values/A:H", id))
+    // Read range A:H using the logged-in user's OAuth access token
+    let res = client
+        .get(format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}/values/A:H",
+            SPREADSHEET_ID
+        ))
         .header("Authorization", format!("Bearer {}", token))
         .send()
         .await
         .map_err(|e| format!("Failed to connect to Google Sheets: {}", e))?;
 
     if !res.status().is_success() {
+        let status = res.status();
         let text = res.text().await.unwrap_or_default();
+        if status.as_u16() == 403 {
+            return Err("Google Sheets Permission Denied: Your email does not have Viewer access to 'NCNC_DB_SHEET' yet.".to_string());
+        }
         return Err(format!("Sheets API error: {}", text));
     }
 
-    let sheet_data: SheetValuesResponse = res.json()
+    let sheet_data: SheetValuesResponse = res
+        .json()
         .await
         .map_err(|e| format!("Failed to parse Sheets values response: {}", e))?;
 
@@ -251,7 +70,7 @@ pub async fn fetch_all_patients(app_handle: &tauri::AppHandle) -> Result<Vec<Pat
         if row.is_empty() {
             continue;
         }
-        
+
         let get_val = |idx: usize| -> String {
             if idx < row.len() {
                 row[idx].trim().to_string()
@@ -275,9 +94,7 @@ pub async fn fetch_all_patients(app_handle: &tauri::AppHandle) -> Result<Vec<Pat
     Ok(patients)
 }
 
-pub async fn append_patient(app_handle: &tauri::AppHandle, patient: Patient) -> Result<(), String> {
-    let id = get_spreadsheet_id(app_handle).await?;
-    let token = get_access_token(app_handle).await?;
+pub async fn append_patient(token: &str, patient: Patient) -> Result<(), String> {
     let client = reqwest::Client::new();
 
     let values = vec![vec![
@@ -295,7 +112,11 @@ pub async fn append_patient(app_handle: &tauri::AppHandle, patient: Patient) -> 
         "values": values
     });
 
-    let res = client.post(format!("https://sheets.googleapis.com/v4/spreadsheets/{}/values/A:H:append", id))
+    let res = client
+        .post(format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}/values/A:H:append",
+            SPREADSHEET_ID
+        ))
         .query(&[("valueInputOption", "USER_ENTERED")])
         .header("Authorization", format!("Bearer {}", token))
         .json(&body)
@@ -311,13 +132,11 @@ pub async fn append_patient(app_handle: &tauri::AppHandle, patient: Patient) -> 
     Ok(())
 }
 
-pub async fn update_patient_record(app_handle: &tauri::AppHandle, patient: Patient) -> Result<(), String> {
-    let id = get_spreadsheet_id(app_handle).await?;
-    let token = get_access_token(app_handle).await?;
+pub async fn update_patient_record(token: &str, patient: Patient) -> Result<(), String> {
     let client = reqwest::Client::new();
 
     // Fetch existing values to find row index
-    let current_patients = fetch_all_patients(app_handle).await?;
+    let current_patients = fetch_all_patients(token).await?;
     let mut row_index = None;
     for (i, p) in current_patients.iter().enumerate() {
         if p.mrn.trim() == patient.mrn.trim() {
@@ -349,7 +168,11 @@ pub async fn update_patient_record(app_handle: &tauri::AppHandle, patient: Patie
 
     // Update range A{row_num}:H{row_num}
     let range = format!("A{}:H{}", row_num, row_num);
-    let res = client.put(format!("https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}", id, range))
+    let res = client
+        .put(format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}/values/{}",
+            SPREADSHEET_ID, range
+        ))
         .query(&[("valueInputOption", "USER_ENTERED")])
         .header("Authorization", format!("Bearer {}", token))
         .json(&body)
@@ -365,13 +188,11 @@ pub async fn update_patient_record(app_handle: &tauri::AppHandle, patient: Patie
     Ok(())
 }
 
-pub async fn delete_patient_record(app_handle: &tauri::AppHandle, mrn: String) -> Result<(), String> {
-    let id = get_spreadsheet_id(app_handle).await?;
-    let token = get_access_token(app_handle).await?;
+pub async fn delete_patient_record(token: &str, mrn: String) -> Result<(), String> {
     let client = reqwest::Client::new();
 
     // Fetch existing values to find row index
-    let current_patients = fetch_all_patients(app_handle).await?;
+    let current_patients = fetch_all_patients(token).await?;
     let mut row_index = None;
     for (i, p) in current_patients.iter().enumerate() {
         if p.mrn.trim() == mrn.trim() {
@@ -402,7 +223,11 @@ pub async fn delete_patient_record(app_handle: &tauri::AppHandle, mrn: String) -
         ]
     });
 
-    let res = client.post(format!("https://sheets.googleapis.com/v4/spreadsheets/{}:batchUpdate", id))
+    let res = client
+        .post(format!(
+            "https://sheets.googleapis.com/v4/spreadsheets/{}:batchUpdate",
+            SPREADSHEET_ID
+        ))
         .header("Authorization", format!("Bearer {}", token))
         .json(&body)
         .send()

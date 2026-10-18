@@ -153,8 +153,17 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
     }
   };
 
+  const isAdmin =
+    user.is_admin &&
+    String(user.email).trim().toLowerCase() === "stephen.dias@neuropedia.ae";
+
   // CRUD Operations
   const addPatient = async () => {
+    if (!isAdmin) {
+      setStatus("Read-Only Mode: Only stephen.dias@neuropedia.ae can add records.");
+      setStatusType("warning");
+      return;
+    }
     if (!formName.trim() || !formMrn.trim()) {
       setStatus("Name and MRN are required fields.");
       setStatusType("warning");
@@ -197,6 +206,11 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
   };
 
   const updatePatient = async () => {
+    if (!isAdmin) {
+      setStatus("Read-Only Mode: Only stephen.dias@neuropedia.ae can update records.");
+      setStatusType("warning");
+      return;
+    }
     if (!formMrn.trim()) {
       setStatus("Please select a record or provide MRN to update.");
       setStatusType("warning");
@@ -234,6 +248,11 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
   };
 
   const deletePatient = async () => {
+    if (!isAdmin) {
+      setStatus("Read-Only Mode: Only stephen.dias@neuropedia.ae can delete records.");
+      setStatusType("warning");
+      return;
+    }
     if (!formMrn.trim()) {
       setStatus("Please select a record to delete.");
       setStatusType("warning");
@@ -275,15 +294,15 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
             break;
           case "a":
             e.preventDefault();
-            addPatient();
+            if (isAdmin) addPatient();
             break;
           case "u":
             e.preventDefault();
-            updatePatient();
+            if (isAdmin) updatePatient();
             break;
           case "d":
             e.preventDefault();
-            deletePatient();
+            if (isAdmin) deletePatient();
             break;
           case "c":
             e.preventDefault();
@@ -301,7 +320,7 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [formName, formMrn, formLoc, formGender, formEmail, formPhone, formDiag, formNotes, patients]);
+  }, [formName, formMrn, formLoc, formGender, formEmail, formPhone, formDiag, formNotes, patients, isAdmin]);
 
   return (
     <div className="app-container">
@@ -461,7 +480,7 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
         {/* Right Side: Form details */}
         <div className="form-panel">
           <h3 className="panel-header">Patient Record Details</h3>
-          {!user.is_admin && (
+          {!isAdmin && (
             <div className="login-status warning" style={{ fontSize: "0.8rem", padding: "0.5rem 0.75rem", marginBottom: "0.5rem", borderRadius: "6px", backgroundColor: "rgba(245, 158, 11, 0.15)", color: "var(--warning)", border: "1px solid rgba(245, 158, 11, 0.3)" }}>
               <strong>Read-Only Mode:</strong> Contact Stephen Dias for write access.
             </div>
@@ -469,7 +488,7 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
           <div className="form-grid">
             <div className="form-group">
               <label>Name</label>
-              <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} disabled={!user.is_admin} />
+              <input type="text" value={formName} onChange={(e) => setFormName(e.target.value)} disabled={!isAdmin} />
             </div>
             <div className="form-group">
               <label>MRN (Unique Medical Record Number)</label>
@@ -477,16 +496,16 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
                 type="text"
                 value={formMrn}
                 onChange={(e) => setFormMrn(e.target.value)}
-                disabled={selectedMrn !== null || !user.is_admin} // MRN shouldn't be edited once record is selected
+                disabled={selectedMrn !== null || !isAdmin} // MRN shouldn't be edited once record is selected
               />
             </div>
             <div className="form-group">
               <label>Location</label>
-              <input type="text" value={formLoc} onChange={(e) => setFormLoc(e.target.value)} disabled={!user.is_admin} />
+              <input type="text" value={formLoc} onChange={(e) => setFormLoc(e.target.value)} disabled={!isAdmin} />
             </div>
             <div className="form-group">
               <label>Gender</label>
-              <select value={formGender} onChange={(e) => setFormGender(e.target.value)} disabled={!user.is_admin}>
+              <select value={formGender} onChange={(e) => setFormGender(e.target.value)} disabled={!isAdmin}>
                 <option value="">Select...</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -495,31 +514,46 @@ export default function Dashboard({ user, onSignOut, theme, onToggleTheme }: Das
             </div>
             <div className="form-group">
               <label>Email</label>
-              <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} disabled={!user.is_admin} />
+              <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} disabled={!isAdmin} />
             </div>
             <div className="form-group">
               <label>Phone</label>
-              <input type="tel" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} disabled={!user.is_admin} />
+              <input type="tel" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} disabled={!isAdmin} />
             </div>
             <div className="form-group">
               <label>Diagnosis</label>
-              <input type="text" value={formDiag} onChange={(e) => setFormDiag(e.target.value)} disabled={!user.is_admin} />
+              <input type="text" value={formDiag} onChange={(e) => setFormDiag(e.target.value)} disabled={!isAdmin} />
             </div>
             <div className="form-group">
               <label>Side Notes</label>
-              <textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} disabled={!user.is_admin} />
+              <textarea value={formNotes} onChange={(e) => setFormNotes(e.target.value)} disabled={!isAdmin} />
             </div>
           </div>
 
           <div className="button-grid">
-            <button className="action-btn add" onClick={addPatient} disabled={loading || !user.is_admin}>
-              Add New
+            <button
+              className="action-btn add"
+              onClick={addPatient}
+              disabled={loading || !isAdmin}
+              title={!isAdmin ? "Admin only (stephen.dias@neuropedia.ae)" : "Add new patient record"}
+            >
+              {!isAdmin && "🔒 "}Add New
             </button>
-            <button className="action-btn update" onClick={updatePatient} disabled={loading || !user.is_admin}>
-              Update
+            <button
+              className="action-btn update"
+              onClick={updatePatient}
+              disabled={loading || !isAdmin}
+              title={!isAdmin ? "Admin only (stephen.dias@neuropedia.ae)" : "Update selected patient record"}
+            >
+              {!isAdmin && "🔒 "}Update
             </button>
-            <button className="action-btn delete" onClick={deletePatient} disabled={loading || !user.is_admin}>
-              Delete
+            <button
+              className="action-btn delete"
+              onClick={deletePatient}
+              disabled={loading || !isAdmin}
+              title={!isAdmin ? "Admin only (stephen.dias@neuropedia.ae)" : "Delete selected patient record"}
+            >
+              {!isAdmin && "🔒 "}Delete
             </button>
             <button className="action-btn clear" onClick={clearFields} disabled={loading}>
               Clear
